@@ -1,0 +1,588 @@
+/* =========================================================
+   TEACHERS PAGE
+   ========================================================= */
+
+.teachers-page {
+  width: 100%;
+}
+
+
+/* =========================================================
+   PAGE HEADER
+   ========================================================= */
+
+.teachers-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 25px;
+}
+
+.teachers-page-label {
+  margin: 0 0 7px;
+
+  color: #2563eb;
+
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+}
+
+.teachers-page-header h1 {
+  margin: 0;
+
+  color: #111827;
+
+  font-size: 30px;
+}
+
+.teachers-page-description {
+  margin: 7px 0 0;
+
+  color: #6b7280;
+
+  font-size: 14px;
+}
+
+.teachers-header-actions {
+  display: flex;
+  gap: 10px;
+}
+
+
+/* =========================================================
+   BUTTONS
+   ========================================================= */
+
+.teachers-refresh-button,
+.teachers-add-button {
+  padding: 11px 17px;
+
+  border-radius: 8px;
+
+  font-size: 13px;
+  font-weight: 600;
+
+  cursor: pointer;
+}
+
+.teachers-refresh-button {
+  border: 1px solid #d1d5db;
+
+  background: white;
+
+  color: #374151;
+}
+
+.teachers-refresh-button:hover {
+  background: #f9fafb;
+}
+
+.teachers-add-button {
+  border: none;
+
+  background: #2563eb;
+
+  color: white;
+}
+
+.teachers-add-button:hover {
+  background: #1d4ed8;
+}
+
+.teachers-refresh-button:disabled,
+.teachers-add-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+
+/* =========================================================
+   ERROR
+   ========================================================= */
+
+.teachers-error {
+  margin-bottom: 20px;
+
+  padding: 13px 16px;
+
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+
+  background: #fef2f2;
+
+  color: #b91c1c;
+
+  font-size: 14px;
+}
+
+
+/* =========================================================
+   SUMMARY
+   ========================================================= */
+
+.teachers-summary {
+  margin-bottom: 20px;
+}
+
+.teachers-summary > div {
+  display: inline-flex;
+  flex-direction: column;
+
+  gap: 5px;
+
+  min-width: 170px;
+
+  padding: 17px 20px;
+
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+
+  background: white;
+}
+
+.teachers-summary span {
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.teachers-summary strong {
+  color: #111827;
+  font-size: 22px;
+}
+
+
+/* =========================================================
+   TABLE
+   ========================================================= */
+
+.teachers-table-card {
+  width: 100%;
+
+  overflow: hidden;
+
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+
+  background: white;
+}
+
+.teachers-table-header {
+  padding: 20px 22px;
+
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.teachers-table-header h2 {
+  margin: 0;
+
+  color: #111827;
+
+  font-size: 18px;
+}
+
+.teachers-table-header p {
+  margin: 5px 0 0;
+
+  color: #6b7280;
+
+  font-size: 13px;
+}
+
+.teachers-table-wrapper {
+  width: 100%;
+
+  overflow-x: auto;
+}
+
+.teachers-data-table {
+  width: 100%;
+
+  min-width: 600px;
+
+  border-collapse: collapse;
+}
+
+.teachers-data-table th {
+  padding: 14px 20px;
+
+  border-bottom: 1px solid #e5e7eb;
+
+  background: #f9fafb;
+
+  color: #6b7280;
+
+  font-size: 12px;
+  font-weight: 700;
+
+  text-align: left;
+
+  text-transform: uppercase;
+
+  letter-spacing: 0.5px;
+}
+
+.teachers-data-table td {
+  padding: 16px 20px;
+
+  border-bottom: 1px solid #f1f5f9;
+
+  color: #374151;
+
+  font-size: 14px;
+}
+
+.teachers-data-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.teachers-data-table tbody tr:hover {
+  background: #f9fafb;
+}
+
+.teachers-id {
+  color: #2563eb;
+
+  font-weight: 700;
+}
+
+.teachers-name {
+  color: #111827;
+}
+
+
+/* =========================================================
+   TABLE STATES
+   ========================================================= */
+
+.teachers-table-state {
+  padding: 60px 20px;
+
+  text-align: center;
+}
+
+.teachers-table-state h3 {
+  margin: 0;
+
+  color: #111827;
+
+  font-size: 17px;
+}
+
+.teachers-table-state p {
+  margin: 8px 0 0;
+
+  color: #6b7280;
+
+  font-size: 14px;
+}
+
+
+/* =========================================================
+   MODAL
+   ========================================================= */
+
+.teachers-modal-overlay {
+  position: fixed;
+
+  inset: 0;
+
+  z-index: 1000;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  padding: 20px;
+
+  background: rgba(17, 24, 39, 0.55);
+}
+
+.teachers-modal-card {
+  width: 100%;
+
+  max-width: 520px;
+
+  max-height: 90vh;
+
+  overflow-y: auto;
+
+  border-radius: 16px;
+
+  background: white;
+
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.2);
+}
+
+
+/* =========================================================
+   MODAL HEADER
+   ========================================================= */
+
+.teachers-modal-header {
+  display: flex;
+
+  justify-content: space-between;
+
+  gap: 20px;
+
+  padding: 24px;
+
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.teachers-modal-label {
+  margin: 0 0 6px;
+
+  color: #2563eb;
+
+  font-size: 10px;
+  font-weight: 700;
+
+  letter-spacing: 1.3px;
+}
+
+.teachers-modal-header h2 {
+  margin: 0;
+
+  color: #111827;
+
+  font-size: 21px;
+}
+
+.teachers-modal-header p:last-child {
+  margin: 6px 0 0;
+
+  color: #6b7280;
+
+  font-size: 13px;
+
+  line-height: 1.5;
+}
+
+.teachers-modal-close {
+  width: 32px;
+  height: 32px;
+
+  flex-shrink: 0;
+
+  border: none;
+
+  border-radius: 7px;
+
+  background: #f3f4f6;
+
+  color: #374151;
+
+  font-size: 21px;
+
+  cursor: pointer;
+}
+
+.teachers-modal-close:hover {
+  background: #e5e7eb;
+}
+
+
+/* =========================================================
+   FORM
+   ========================================================= */
+
+.teachers-form {
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 18px;
+
+  padding: 24px;
+}
+
+.teachers-form-group {
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 7px;
+}
+
+.teachers-form-group label {
+  color: #374151;
+
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.teachers-form-group input {
+  width: 100%;
+
+  padding: 11px 13px;
+
+  border: 1px solid #d1d5db;
+
+  border-radius: 8px;
+
+  background: white;
+
+  color: #111827;
+
+  font-size: 14px;
+
+  outline: none;
+
+  transition: 0.2s ease;
+}
+
+.teachers-form-group input:focus {
+  border-color: #2563eb;
+
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.teachers-form-group small {
+  color: #6b7280;
+
+  font-size: 11px;
+}
+
+
+/* =========================================================
+   FORM ERROR
+   ========================================================= */
+
+.teachers-form-error {
+  padding: 12px 14px;
+
+  border: 1px solid #fecaca;
+
+  border-radius: 8px;
+
+  background: #fef2f2;
+
+  color: #b91c1c;
+
+  font-size: 13px;
+
+  line-height: 1.5;
+}
+
+
+/* =========================================================
+   MODAL ACTIONS
+   ========================================================= */
+
+.teachers-modal-actions {
+  display: flex;
+
+  justify-content: flex-end;
+
+  gap: 10px;
+
+  padding-top: 5px;
+}
+
+.teachers-cancel-button,
+.teachers-submit-button {
+  padding: 10px 16px;
+
+  border-radius: 8px;
+
+  font-size: 13px;
+
+  font-weight: 600;
+
+  cursor: pointer;
+}
+
+.teachers-cancel-button {
+  border: 1px solid #d1d5db;
+
+  background: white;
+
+  color: #374151;
+}
+
+.teachers-cancel-button:hover {
+  background: #f9fafb;
+}
+
+.teachers-submit-button {
+  border: none;
+
+  background: #2563eb;
+
+  color: white;
+}
+
+.teachers-submit-button:hover {
+  background: #1d4ed8;
+}
+
+.teachers-cancel-button:disabled,
+.teachers-submit-button:disabled {
+  opacity: 0.6;
+
+  cursor: not-allowed;
+}
+
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
+@media (max-width: 700px) {
+  .teachers-page-header {
+    flex-direction: column;
+
+    align-items: flex-start;
+  }
+
+  .teachers-header-actions {
+    width: 100%;
+  }
+
+  .teachers-refresh-button,
+  .teachers-add-button {
+    flex: 1;
+  }
+
+  .teachers-summary > div {
+    width: 100%;
+  }
+}
+
+@media (max-width: 600px) {
+  .teachers-header-actions {
+    flex-direction: column;
+  }
+
+  .teachers-refresh-button,
+  .teachers-add-button {
+    width: 100%;
+  }
+
+  .teachers-modal-overlay {
+    padding: 12px;
+  }
+
+  .teachers-modal-card {
+    max-height: 95vh;
+  }
+
+  .teachers-modal-header,
+  .teachers-form {
+    padding: 20px;
+  }
+
+  .teachers-modal-actions {
+    flex-direction: column-reverse;
+  }
+
+  .teachers-cancel-button,
+  .teachers-submit-button {
+    width: 100%;
+  }
+}
