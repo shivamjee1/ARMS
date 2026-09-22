@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 
-#from app.db.autoadmin import create_default_admin
+from app.db.create_admin import create_admin
 
 from app.routers.auth import router as auth_router
 
