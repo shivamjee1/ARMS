@@ -1,3 +1,4 @@
+
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
@@ -5,9 +6,11 @@ function Sidebar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
+  const role = user?.role?.toLowerCase();
+
   const handleLogout = () => {
     logout();
-    navigate("/login");
+    navigate("/login", { replace: true });
   };
 
   const adminLinks = [
@@ -24,33 +27,46 @@ function Sidebar() {
   ];
 
   const teacherLinks = [
-    { name: "Dashboard", path: "/dashboard" },
-    { name: "Students", path: "/students" },
-    { name: "Attendance", path: "/attendance" },
-    { name: "Results", path: "/results" },
+    { name: "Dashboard", path: "/teacher/dashboard" },
+    { name: "My Subjects", path: "/teacher/subjects" },
+    { name: "My Sections", path: "/teacher/sections" },
+    { name: "My Students", path: "/teacher/students" },
+    { name: "Manage Attendance", path: "/teacher/attendance" },
+    { name: "Results & Marks", path: "/teacher/results" },
   ];
 
   const studentLinks = [
-    { name: "Dashboard", path: "/dashboard" },
-    { name: "My Attendance", path: "/attendance" },
-    { name: "My Results", path: "/results" },
+    { name: "Dashboard", path: "/student/dashboard" },
+    { name: "My Attendance", path: "/student/attendance" },
+    { name: "My Results", path: "/student/results" },
+    { name: "My Profile", path: "/student/profile" },
   ];
 
   let links = [];
 
-  if (user?.role === "admin") {
-    links = adminLinks;
-  } else if (user?.role === "teacher") {
-    links = teacherLinks;
-  } else if (user?.role === "student") {
-    links = studentLinks;
+  switch (role) {
+    case "admin":
+      links = adminLinks;
+      break;
+    case "teacher":
+      links = teacherLinks;
+      break;
+    case "student":
+      links = studentLinks;
+      break;
+    default:
+      links = [];
   }
 
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
         <h2>ARMS</h2>
-        <p>Attendance & Result</p>
+        <p>Attendance &amp; Result</p>
+        <span className="sidebar-role">
+          {role ? role.charAt(0).toUpperCase() + role.slice(1) : "Guest"}
+          Portal
+        </span>
       </div>
 
       <nav className="sidebar-nav">
@@ -58,6 +74,9 @@ function Sidebar() {
           <NavLink
             key={link.path}
             to={link.path}
+            end={link.path === "/dashboard" ||
+                 link.path === "/student/dashboard" ||
+                 link.path === "/teacher/dashboard"}
             className={({ isActive }) =>
               isActive ? "sidebar-link active" : "sidebar-link"
             }
@@ -69,11 +88,21 @@ function Sidebar() {
 
       <div className="sidebar-footer">
         <div className="sidebar-user">
-          <strong>{user?.email}</strong>
-          <span>{user?.role}</span>
+          <strong title={user?.email}>
+            {user?.email || "User"}
+          </strong>
+          <span>
+            {role
+              ? role.charAt(0).toUpperCase() + role.slice(1)
+              : "Unknown role"}
+          </span>
         </div>
 
-        <button className="logout-button" onClick={handleLogout}>
+        <button
+          type="button"
+          className="logout-button"
+          onClick={handleLogout}
+        >
           Logout
         </button>
       </div>

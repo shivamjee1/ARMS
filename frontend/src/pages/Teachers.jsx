@@ -7,6 +7,7 @@ function Teachers() {
 
   const [loading, setLoading] = useState(true);
   const [formLoading, setFormLoading] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
 
   const [error, setError] = useState("");
   const [formError, setFormError] = useState("");
@@ -19,6 +20,7 @@ function Teachers() {
     name: "",
   });
 
+  // Fetch teachers
   const fetchTeachers = async () => {
     try {
       setLoading(true);
@@ -43,6 +45,7 @@ function Teachers() {
     fetchTeachers();
   }, []);
 
+  // Open create teacher form
   const openForm = () => {
     setFormData({
       id: "",
@@ -54,6 +57,7 @@ function Teachers() {
     setShowForm(true);
   };
 
+  // Close create teacher form
   const closeForm = () => {
     if (formLoading) return;
 
@@ -61,6 +65,7 @@ function Teachers() {
     setFormError("");
   };
 
+  // Handle input changes
   const handleChange = (event) => {
     const { name, value } = event.target;
 
@@ -70,6 +75,7 @@ function Teachers() {
     }));
   };
 
+  // Create teacher
   const handleCreateTeacher = async (event) => {
     event.preventDefault();
 
@@ -109,12 +115,47 @@ function Teachers() {
     }
   };
 
+  // Delete teacher
+  const handleDeleteTeacher = async (teacher) => {
+    const confirmed = window.confirm(
+      `Are you sure you want to delete teacher ${teacher.name} (${teacher.id})?`
+    );
+
+    if (!confirmed) return;
+
+    setDeletingId(teacher.id);
+    setError("");
+
+    try {
+      await api.delete(`/teachers/${teacher.id}`);
+
+      // Refresh teacher list after successful deletion
+      await fetchTeachers();
+    } catch (error) {
+      console.error("Failed to delete teacher:", error);
+
+      if (error.response?.data?.detail) {
+        setError(
+          typeof error.response.data.detail === "string"
+            ? error.response.data.detail
+            : JSON.stringify(error.response.data.detail)
+        );
+      } else {
+        setError("Failed to delete teacher.");
+      }
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   return (
     <div className="teachers-page">
       {/* PAGE HEADER */}
       <div className="teachers-page-header">
         <div>
-          <p className="teachers-page-label">TEACHER MANAGEMENT</p>
+          <p className="teachers-page-label">
+            TEACHER MANAGEMENT
+          </p>
 
           <h1>Teachers</h1>
 
@@ -127,7 +168,7 @@ function Teachers() {
           <button
             className="teachers-refresh-button"
             onClick={fetchTeachers}
-            disabled={loading}
+            disabled={loading || deletingId !== null}
           >
             {loading ? "Refreshing..." : "Refresh"}
           </button>
@@ -156,7 +197,7 @@ function Teachers() {
         </div>
       </div>
 
-      {/* TABLE */}
+      {/* TEACHERS TABLE */}
       <div className="teachers-table-card">
         <div className="teachers-table-header">
           <h2>Teacher Records</h2>
@@ -186,6 +227,7 @@ function Teachers() {
                   <th>Teacher ID</th>
                   <th>Name</th>
                   <th>Email</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
 
@@ -206,6 +248,21 @@ function Teachers() {
 
                     <td>
                       {teacher.user_email}
+                    </td>
+
+                    <td>
+                      <button
+                        type="button"
+                        className="teacher-delete-button"
+                        onClick={() =>
+                          handleDeleteTeacher(teacher)
+                        }
+                        disabled={deletingId !== null}
+                      >
+                        {deletingId === teacher.id
+                          ? "Deleting..."
+                          : "Delete"}
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -319,7 +376,7 @@ function Teachers() {
                 </div>
               )}
 
-              {/* ACTIONS */}
+              {/* FORM ACTIONS */}
               <div className="teachers-modal-actions">
                 <button
                   type="button"

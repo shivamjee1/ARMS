@@ -496,7 +496,9 @@ def update_result(
         )
 
     # Check assessment
-    assessment = db.get(Assessment, result.assessment_name)
+    assessment = db.query(Assessment).filter(
+        Assessment.name == result.assessment_name
+    ).first()
 
     if not assessment:
         raise HTTPException(

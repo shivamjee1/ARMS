@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import api from "../services/api";
 import "./Attendance.css";
@@ -20,45 +21,262 @@ function Attendance() {
     date: "",
   });
 
+  const [loadingSupport, setLoadingSupport] = useState(true);
   const [loadingRegister, setLoadingRegister] = useState(false);
   const [loadingDaily, setLoadingDaily] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const [registerError, setRegisterError] = useState("");
   const [updateError, setUpdateError] = useState("");
+  const [supportError, setSupportError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+
+  // --------------------------------------------------
+  // HELPERS
+  // --------------------------------------------------
+
+  const getErrorMessage = (error, fallback) => {
+    const detail = error?.response?.data?.detail;
+
+    if (typeof detail === "string") {
+      return detail;
+    }
+
+    if (Array.isArray(detail)) {
+      return detail
+        .map((item) =>
+          typeof item === "string"
+            ? item
+            : item?.msg || "Invalid request"
+        )
+        .join(", ");
+    }
+
+    if (typeof error?.response?.data?.message === "string") {
+      return error.response.data.message;
+    }
+
+    return fallback;
+  };
+
+  const normalizeStatus = (status) => {
+    if (!status) return "";
+
+    switch (String(status).trim().toLowerCase()) {
+      case "p":
+      case "present":
+        return "P";
+
+      case "a":
+      case "absent":
+        return "A";
+
+      case "l":
+      case "late":
+      case "leave":
+        return "L";
+
+      default:
+        return "";
+    }
+  };
+
+  const statusForBackend = (status) => {
+    switch (normalizeStatus(status)) {
+      case "P":
+        return "Present";
+
+      case "A":
+        return "Absent";
+
+      case "L":
+        return "Late";
+
+      default:
+        return "";
+    }
+  };
+
+  const getStatusClass = (status) => {
+    switch (normalizeStatus(status)) {
+      case "P":
+        return "attendance-present";
+
+      case "A":
+        return "attendance-absent";
+
+      case "L":
+        return "attendance-leave";
+
+      default:
+        return "attendance-not-marked";
+    }
+  };
+
+  const getStatusLabel = (status) => {
+    return normalizeStatus(status) || "-";
+  };
+
+  const getStudentPercentage = (student) => {
+    const percentage =
+      student.attendance_percentage ?? student.percentage;
+
+    if (percentage !== undefined && percentage !== null) {
+      const numericPercentage = Number(percentage);
+
+      return Number.isFinite(numericPercentage)
+        ? numericPercentage.toFixed(2)
+        : "0.00";
+    }
+
+    const attendance = Array.isArray(student.attendance)
+      ? student.attendance
+      : [];
+
+    const marked = attendance
+      .map((item) => normalizeStatus(item.status))
+      .filter(Boolean);
+
+    if (marked.length === 0) return "0.00";
+
+    const presentCount = marked.filter(
+      (status) => status === "P"
+    ).length;
+
+    return ((presentCount / marked.length) * 100).toFixed(2);
+  };
+
+  const getRegisterDates = () => {
+    if (!register) return [];
+
+    if (Array.isArray(register.dates)) {
+      return register.dates;
+    }
+
+    if (Array.isArray(register.attendance_dates)) {
+      return register.attendance_dates;
+    }
+
+    const dates = new Set();
+
+    getStudentList().forEach((student) => {
+      if (Array.isArray(student.attendance)) {
+        student.attendance.forEach((item) => {
+          if (item.date) dates.add(item.date);
+        });
+      }
+    });
+
+    return Array.from(dates).sort();
+  };
+
+  const getStudentAttendanceForDate = (student, date) => {
+    if (!Array.isArray(student.attendance)) return null;
+
+    const record = student.attendance.find(
+      (item) => item.date === date
+    );
+
+    return record?.status ?? null;
+  };
+
+  const getStudentList = () => {
+    if (!register) return [];
+
+    if (Array.isArray(register.students)) {
+      return register.students;
+    }
+
+    if (Array.isArray(register.records)) {
+      return register.records;
+    }
+
+    return [];
+  };
+
+  const getSectionDisplay = (section) => {
+    if (!section) return "";
+
+    return (
+      section.section_code ??
+      section.code ??
+      section.id ??
+      ""
+    );
+  };
+
+  const getStudentId = (student) => {
+    return student.student_id ?? student.id;
+  };
+
+  const getStudentName = (student) => {
+    return (
+      student.student_name ??
+      student.name ??
+      student.full_name ??
+      "Unknown Student"
+    );
+  };
 
   // --------------------------------------------------
   // LOAD SECTIONS AND SUBJECTS
   // --------------------------------------------------
 
   useEffect(() => {
+    let active = true;
+
+    const fetchSupportData = async () => {
+      try {
+        setLoadingSupport(true);
+        setSupportError("");
+
+        const [sectionsResponse, subjectsResponse] =
+          await Promise.all([
+            api.get("/academic-sections"),
+            api.get("/subjects"),
+          ]);
+
+        if (!active) return;
+
+        setSections(
+          Array.isArray(sectionsResponse.data)
+            ? sectionsResponse.data
+            : []
+        );
+
+        setSubjects(
+          Array.isArray(subjectsResponse.data)
+            ? subjectsResponse.data
+            : []
+        );
+      } catch (error) {
+        if (!active) return;
+
+        console.error(
+          "Failed to load sections or subjects:",
+          error.response?.data || error
+        );
+
+        setSupportError(
+          getErrorMessage(
+            error,
+            "Failed to load sections or subjects."
+          )
+        );
+      } finally {
+        if (active) setLoadingSupport(false);
+      }
+    };
+
     fetchSupportData();
+
+    return () => {
+      active = false;
+    };
   }, []);
 
-  const fetchSupportData = async () => {
-    try {
-      const [sectionsResponse, subjectsResponse] = await Promise.all([
-        api.get("/academic-sections"),
-        api.get("/subjects"),
-      ]);
-
-      setSections(sectionsResponse.data);
-      setSubjects(subjectsResponse.data);
-    } catch (error) {
-      console.error("Failed to load attendance support data:", error);
-
-      const message =
-        error.response?.data?.detail ||
-        "Failed to load sections or subjects.";
-
-      setRegisterError(message);
-      setUpdateError(message);
-    }
-  };
-
   // --------------------------------------------------
-  // REGISTER
+  // REGISTER FILTERS
   // --------------------------------------------------
 
   const handleRegisterFilterChange = (event) => {
@@ -68,7 +286,15 @@ function Attendance() {
       ...previous,
       [name]: value,
     }));
+
+    setRegisterError("");
+    setSuccessMessage("");
   };
+
+  // --------------------------------------------------
+  // LOAD ATTENDANCE REGISTER
+  // GET /attendance/register
+  // --------------------------------------------------
 
   const loadRegister = async () => {
     if (!registerFilters.section_id) {
@@ -85,6 +311,7 @@ function Attendance() {
       setLoadingRegister(true);
       setRegisterError("");
       setSuccessMessage("");
+      setRegister(null);
 
       const response = await api.get("/attendance/register", {
         params: {
@@ -93,15 +320,32 @@ function Attendance() {
         },
       });
 
-      setRegister(response.data);
+      const data = response.data;
+
+      if (
+        !data ||
+        (!Array.isArray(data.students) &&
+          !Array.isArray(data.records))
+      ) {
+        throw new Error(
+          "Unexpected attendance register response from the server."
+        );
+      }
+
+      setRegister(data);
     } catch (error) {
-      console.error("Failed to load attendance register:", error);
+      console.error(
+        "Failed to load attendance register:",
+        error.response?.data || error
+      );
 
-      const message =
-        error.response?.data?.detail ||
-        "Failed to load attendance register.";
+      setRegisterError(
+        getErrorMessage(
+          error,
+          error.message || "Failed to load attendance register."
+        )
+      );
 
-      setRegisterError(message);
       setRegister(null);
     } finally {
       setLoadingRegister(false);
@@ -109,7 +353,7 @@ function Attendance() {
   };
 
   // --------------------------------------------------
-  // UPDATE ATTENDANCE
+  // UPDATE FILTERS
   // --------------------------------------------------
 
   const handleUpdateFilterChange = (event) => {
@@ -119,7 +363,15 @@ function Attendance() {
       ...previous,
       [name]: value,
     }));
+
+    setUpdateError("");
+    setSuccessMessage("");
   };
+
+  // --------------------------------------------------
+  // LOAD DAILY ATTENDANCE
+  // GET /attendance/date
+  // --------------------------------------------------
 
   const loadDailyAttendance = async () => {
     if (!updateFilters.section_id) {
@@ -141,6 +393,7 @@ function Attendance() {
       setLoadingDaily(true);
       setUpdateError("");
       setSuccessMessage("");
+      setDailyAttendance([]);
 
       const response = await api.get("/attendance/date", {
         params: {
@@ -150,49 +403,77 @@ function Attendance() {
         },
       });
 
-      /*
-       Expected response:
+      if (!Array.isArray(response.data)) {
+        throw new Error(
+          "Unexpected daily attendance response from the server."
+        );
+      }
 
-       [
-         {
-           student_id: "STU2301001",
-           student_name: "Student 1",
-           status: "P"
-         }
-       ]
-      */
+      const normalizedStudents = response.data.map((student) => ({
+        ...student,
+        student_id: getStudentId(student),
+        student_name: getStudentName(student),
+        status: normalizeStatus(student.status),
+      }));
 
-      setDailyAttendance(response.data);
+      setDailyAttendance(normalizedStudents);
     } catch (error) {
-      console.error("Failed to load daily attendance:", error);
+      console.error(
+        "Failed to load daily attendance:",
+        error.response?.data || error
+      );
 
-      const message =
-        error.response?.data?.detail ||
-        "Failed to load attendance for this date.";
+      setUpdateError(
+        getErrorMessage(
+          error,
+          error.message || "Failed to load attendance for this date."
+        )
+      );
 
-      setUpdateError(message);
       setDailyAttendance([]);
     } finally {
       setLoadingDaily(false);
     }
   };
 
+  // --------------------------------------------------
+  // CHANGE A STUDENT'S ATTENDANCE STATUS
+  // --------------------------------------------------
+
   const handleAttendanceChange = (studentId, status) => {
     setDailyAttendance((previous) =>
       previous.map((student) =>
         String(student.student_id) === String(studentId)
-          ? {
-              ...student,
-              status,
-            }
+          ? { ...student, status }
           : student
       )
     );
+
+    setUpdateError("");
+    setSuccessMessage("");
   };
+
+  // --------------------------------------------------
+  // SAVE DAILY ATTENDANCE
+  // PUT /attendance/date
+  // --------------------------------------------------
 
   const saveAttendance = async () => {
     if (dailyAttendance.length === 0) {
-      setUpdateError("There are no attendance records to save.");
+      setUpdateError(
+        "No students are available to save attendance."
+      );
+      return;
+    }
+
+    const unmarkedStudents = dailyAttendance.filter(
+      (student) => !normalizeStatus(student.status)
+    );
+
+    if (unmarkedStudents.length > 0) {
+      setUpdateError(
+        `Please mark attendance for all students. ${unmarkedStudents.length} student(s) are unmarked.`
+      );
       return;
     }
 
@@ -201,180 +482,46 @@ function Attendance() {
       setUpdateError("");
       setSuccessMessage("");
 
-      await api.put("/attendance/date", {
+      const payload = {
         section_id: Number(updateFilters.section_id),
         subject_code: updateFilters.subject_code,
         date: updateFilters.date,
         records: dailyAttendance.map((student) => ({
-          student_id: student.student_id,
-          status: student.status,
+          student_id: String(student.student_id),
+          status: statusForBackend(student.status),
         })),
-      });
+      };
+
+      await api.put("/attendance/date", payload);
 
       setSuccessMessage(
         `Attendance saved successfully for ${updateFilters.date}.`
       );
 
-      // Refresh register if it is currently showing
+      // Refresh the register when it matches the saved subject and section.
       if (
         register &&
-        String(register.section_id) === String(updateFilters.section_id) &&
-        register.subject_code === updateFilters.subject_code
+        String(register.section_id) ===
+          String(registerFilters.section_id) &&
+        register.subject_code === registerFilters.subject_code &&
+        String(registerFilters.section_id) ===
+          String(updateFilters.section_id) &&
+        registerFilters.subject_code === updateFilters.subject_code
       ) {
         await loadRegister();
       }
     } catch (error) {
-      console.error("Failed to save attendance:", error);
+      console.error(
+        "Failed to save attendance:",
+        error.response?.data || error
+      );
 
-      const message =
-        error.response?.data?.detail ||
-        "Failed to save attendance.";
-
-      setUpdateError(message);
+      setUpdateError(
+        getErrorMessage(error, "Failed to save attendance.")
+      );
     } finally {
       setSaving(false);
     }
-  };
-
-  // --------------------------------------------------
-  // HELPERS
-  // --------------------------------------------------
-
-  const getStatusClass = (status) => {
-    switch (status) {
-      case "P":
-        return "attendance-present";
-
-      case "A":
-        return "attendance-absent";
-
-      case "L":
-        return "attendance-leave";
-
-      default:
-        return "attendance-not-marked";
-    }
-  };
-
-  const getStatusLabel = (status) => {
-    switch (status) {
-      case "P":
-        return "P";
-
-      case "A":
-        return "A";
-
-      case "L":
-        return "L";
-
-      default:
-        return "-";
-    }
-  };
-
-  const getStudentPercentage = (student) => {
-    if (student.percentage !== undefined && student.percentage !== null) {
-      return Number(student.percentage).toFixed(2);
-    }
-
-    if (
-      student.attendance_percentage !== undefined &&
-      student.attendance_percentage !== null
-    ) {
-      return Number(student.attendance_percentage).toFixed(2);
-    }
-
-    if (!student.attendance || student.attendance.length === 0) {
-      return "0.00";
-    }
-
-    const markedAttendance = student.attendance.filter(
-      (item) =>
-        item.status === "P" ||
-        item.status === "A" ||
-        item.status === "L"
-    );
-
-    if (markedAttendance.length === 0) {
-      return "0.00";
-    }
-
-    const presentCount = markedAttendance.filter(
-      (item) => item.status === "P"
-    ).length;
-
-    return ((presentCount / markedAttendance.length) * 100).toFixed(2);
-  };
-
-  const getRegisterDates = () => {
-    if (!register) {
-      return [];
-    }
-
-    if (Array.isArray(register.dates)) {
-      return register.dates;
-    }
-
-    if (Array.isArray(register.attendance_dates)) {
-      return register.attendance_dates;
-    }
-
-    // If backend returns students with attendance arrays
-    if (Array.isArray(register.students)) {
-      const dates = new Set();
-
-      register.students.forEach((student) => {
-        if (Array.isArray(student.attendance)) {
-          student.attendance.forEach((item) => {
-            if (item.date) {
-              dates.add(item.date);
-            }
-          });
-        }
-      });
-
-      return Array.from(dates).sort();
-    }
-
-    return [];
-  };
-
-  const getStudentAttendanceForDate = (student, date) => {
-    if (!Array.isArray(student.attendance)) {
-      return null;
-    }
-
-    const record = student.attendance.find(
-      (item) => item.date === date
-    );
-
-    return record?.status || null;
-  };
-
-  const getStudentList = () => {
-    if (!register) {
-      return [];
-    }
-
-    if (Array.isArray(register.students)) {
-      return register.students;
-    }
-
-    if (Array.isArray(register.records)) {
-      return register.records;
-    }
-
-    return [];
-  };
-
-  const getSectionDisplay = (section) => {
-    if (!section) return "";
-
-    if (section.section_code !== undefined) {
-      return section.section_code;
-    }
-
-    return section.id;
   };
 
   // --------------------------------------------------
@@ -383,8 +530,6 @@ function Attendance() {
 
   return (
     <div className="attendance-page">
-      {/* HEADER */}
-
       <div className="attendance-page-header">
         <div>
           <div className="attendance-page-label">
@@ -399,7 +544,11 @@ function Attendance() {
         </div>
       </div>
 
-      {/* SUCCESS */}
+      {supportError && (
+        <div className="attendance-error">
+          {supportError}
+        </div>
+      )}
 
       {successMessage && (
         <div className="attendance-success">
@@ -407,15 +556,12 @@ function Attendance() {
         </div>
       )}
 
-      {/* ==================================================
-          VIEW REGISTER
-      ================================================== */}
+      {/* VIEW REGISTER */}
 
       <section className="attendance-card">
         <div className="attendance-card-header">
           <div>
             <h3>View Attendance Register</h3>
-
             <p>
               View all students and their attendance for a subject.
             </p>
@@ -424,12 +570,16 @@ function Attendance() {
 
         <div className="attendance-filter-row">
           <div className="attendance-form-group">
-            <label>Academic Section</label>
+            <label htmlFor="register-section">
+              Academic Section
+            </label>
 
             <select
+              id="register-section"
               name="section_id"
               value={registerFilters.section_id}
               onChange={handleRegisterFilterChange}
+              disabled={loadingSupport}
             >
               <option value="">Select Section</option>
 
@@ -442,12 +592,16 @@ function Attendance() {
           </div>
 
           <div className="attendance-form-group">
-            <label>Subject Code</label>
+            <label htmlFor="register-subject">
+              Subject Code
+            </label>
 
             <select
+              id="register-subject"
               name="subject_code"
               value={registerFilters.subject_code}
               onChange={handleRegisterFilterChange}
+              disabled={loadingSupport}
             >
               <option value="">Select Subject</option>
 
@@ -460,9 +614,10 @@ function Attendance() {
           </div>
 
           <button
+            type="button"
             className="attendance-primary-button"
             onClick={loadRegister}
-            disabled={loadingRegister}
+            disabled={loadingRegister || loadingSupport}
           >
             {loadingRegister ? "Loading..." : "Load Register"}
           </button>
@@ -482,7 +637,8 @@ function Attendance() {
           <div className="attendance-register-header">
             <div>
               <h3>
-                {register.subject_code || registerFilters.subject_code}
+                {register.subject_code ||
+                  registerFilters.subject_code}
                 {register.subject_name
                   ? ` — ${register.subject_name}`
                   : ""}
@@ -492,6 +648,7 @@ function Attendance() {
                 Section:{" "}
                 <strong>
                   {register.section_code ||
+                    register.section_id ||
                     registerFilters.section_id}
                 </strong>
               </p>
@@ -515,7 +672,10 @@ function Attendance() {
                     <th>Student Name</th>
 
                     {getRegisterDates().map((date) => (
-                      <th key={date} className="attendance-date-header">
+                      <th
+                        key={date}
+                        className="attendance-date-header"
+                      >
                         {date}
                       </th>
                     ))}
@@ -528,18 +688,18 @@ function Attendance() {
 
                 <tbody>
                   {getStudentList().map((student) => (
-                    <tr key={student.student_id || student.id}>
+                    <tr
+                      key={getStudentId(student)}
+                    >
                       <td>
                         <span className="attendance-student-id">
-                          {student.student_id || student.id}
+                          {getStudentId(student)}
                         </span>
                       </td>
 
                       <td>
                         <span className="attendance-student-name">
-                          {student.student_name ||
-                            student.name ||
-                            "Unknown Student"}
+                          {getStudentName(student)}
                         </span>
                       </td>
 
@@ -551,7 +711,10 @@ function Attendance() {
                           );
 
                         return (
-                          <td key={date} className="attendance-status-cell">
+                          <td
+                            key={date}
+                            className="attendance-status-cell"
+                          >
                             <span
                               className={`attendance-status ${getStatusClass(
                                 status
@@ -585,21 +748,18 @@ function Attendance() {
             </span>
 
             <span>
-              <b className="legend-l">L</b> Leave
+              <b className="legend-l">L</b> Late
             </span>
           </div>
         </section>
       )}
 
-      {/* ==================================================
-          UPDATE ATTENDANCE
-      ================================================== */}
+      {/* UPDATE ATTENDANCE */}
 
       <section className="attendance-card attendance-update-card">
         <div className="attendance-card-header">
           <div>
             <h3>Update Attendance</h3>
-
             <p>
               Select a section, subject and date to edit attendance.
             </p>
@@ -608,12 +768,16 @@ function Attendance() {
 
         <div className="attendance-filter-row">
           <div className="attendance-form-group">
-            <label>Academic Section</label>
+            <label htmlFor="update-section">
+              Academic Section
+            </label>
 
             <select
+              id="update-section"
               name="section_id"
               value={updateFilters.section_id}
               onChange={handleUpdateFilterChange}
+              disabled={loadingSupport}
             >
               <option value="">Select Section</option>
 
@@ -626,12 +790,16 @@ function Attendance() {
           </div>
 
           <div className="attendance-form-group">
-            <label>Subject Code</label>
+            <label htmlFor="update-subject">
+              Subject Code
+            </label>
 
             <select
+              id="update-subject"
               name="subject_code"
               value={updateFilters.subject_code}
               onChange={handleUpdateFilterChange}
+              disabled={loadingSupport}
             >
               <option value="">Select Subject</option>
 
@@ -644,9 +812,10 @@ function Attendance() {
           </div>
 
           <div className="attendance-form-group">
-            <label>Date</label>
+            <label htmlFor="update-date">Date</label>
 
             <input
+              id="update-date"
               type="date"
               name="date"
               value={updateFilters.date}
@@ -655,9 +824,10 @@ function Attendance() {
           </div>
 
           <button
+            type="button"
             className="attendance-primary-button"
             onClick={loadDailyAttendance}
-            disabled={loadingDaily}
+            disabled={loadingDaily || loadingSupport}
           >
             {loadingDaily ? "Loading..." : "Load Attendance"}
           </button>
@@ -673,9 +843,7 @@ function Attendance() {
           <div className="attendance-update-section">
             <div className="attendance-update-title">
               <div>
-                <h4>
-                  Attendance for {updateFilters.date}
-                </h4>
+                <h4>Attendance for {updateFilters.date}</h4>
 
                 <span>
                   {updateFilters.subject_code} · Section{" "}
@@ -700,23 +868,16 @@ function Attendance() {
 
                 <tbody>
                   {dailyAttendance.map((student) => (
-                    <tr
-                      key={
-                        student.student_id ||
-                        student.id
-                      }
-                    >
+                    <tr key={student.student_id}>
                       <td>
                         <span className="attendance-student-id">
-                          {student.student_id || student.id}
+                          {student.student_id}
                         </span>
                       </td>
 
                       <td>
                         <span className="attendance-student-name">
-                          {student.student_name ||
-                            student.name ||
-                            "Unknown Student"}
+                          {student.student_name}
                         </span>
                       </td>
 
@@ -725,14 +886,16 @@ function Attendance() {
                           <button
                             type="button"
                             className={`status-button status-button-p ${
-                              student.status === "P"
+                              normalizeStatus(student.status) === "P"
                                 ? "selected"
                                 : ""
                             }`}
+                            aria-pressed={
+                              normalizeStatus(student.status) === "P"
+                            }
                             onClick={() =>
                               handleAttendanceChange(
-                                student.student_id ||
-                                  student.id,
+                                student.student_id,
                                 "P"
                               )
                             }
@@ -743,14 +906,16 @@ function Attendance() {
                           <button
                             type="button"
                             className={`status-button status-button-a ${
-                              student.status === "A"
+                              normalizeStatus(student.status) === "A"
                                 ? "selected"
                                 : ""
                             }`}
+                            aria-pressed={
+                              normalizeStatus(student.status) === "A"
+                            }
                             onClick={() =>
                               handleAttendanceChange(
-                                student.student_id ||
-                                  student.id,
+                                student.student_id,
                                 "A"
                               )
                             }
@@ -761,14 +926,16 @@ function Attendance() {
                           <button
                             type="button"
                             className={`status-button status-button-l ${
-                              student.status === "L"
+                              normalizeStatus(student.status) === "L"
                                 ? "selected"
                                 : ""
                             }`}
+                            aria-pressed={
+                              normalizeStatus(student.status) === "L"
+                            }
                             onClick={() =>
                               handleAttendanceChange(
-                                student.student_id ||
-                                  student.id,
+                                student.student_id,
                                 "L"
                               )
                             }
@@ -785,17 +952,27 @@ function Attendance() {
 
             <div className="attendance-save-container">
               <button
+                type="button"
                 className="attendance-save-button"
                 onClick={saveAttendance}
-                disabled={saving}
+                disabled={saving || loadingDaily}
               >
-                {saving
-                  ? "Saving..."
-                  : "Save Attendance"}
+                {saving ? "Saving..." : "Save Attendance"}
               </button>
             </div>
           </div>
         )}
+
+        {!loadingDaily &&
+          dailyAttendance.length === 0 &&
+          !updateError &&
+          updateFilters.section_id &&
+          updateFilters.subject_code &&
+          updateFilters.date && (
+            <div className="attendance-empty">
+              No students found for this section.
+            </div>
+          )}
       </section>
     </div>
   );

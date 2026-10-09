@@ -586,3 +586,28 @@
     width: 100%;
   }
 }
+
+
+.teacher-delete-button {
+  padding: 7px 14px;
+  border: 1px solid #dc2626;
+  border-radius: 6px;
+  background-color: #ffffff;
+  color: #dc2626;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.teacher-delete-button:hover:not(:disabled) {
+  background-color: #dc2626;
+  color: #ffffff;
+}
+
+.teacher-delete-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

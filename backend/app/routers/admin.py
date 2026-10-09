@@ -1,3 +1,4 @@
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -10,13 +11,13 @@ from app.schemas.user import AdminUserCreate, UserResponse
 
 router = APIRouter(
     prefix="/admin",
-    tags=["Admin"]
+    tags=["Admin"],
 )
+
 
 def require_admin(
     current_user: User = Depends(get_current_user),
 ) -> User:
-
     if current_user.role != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -24,6 +25,12 @@ def require_admin(
         )
 
     return current_user
+
+
+# --------------------------------------------------
+# GET ALL USERS
+# GET /admin/users
+# --------------------------------------------------
 
 @router.get(
     "/users",
@@ -33,9 +40,13 @@ def get_all_users(
     db: Session = Depends(get_db),
     _: User = Depends(require_admin),
 ):
-    users = db.query(User).all()
-    return users
+    return db.query(User).all()
 
+
+# --------------------------------------------------
+# CREATE USER
+# POST /admin/users
+# --------------------------------------------------
 
 @router.post(
     "/users",
@@ -70,3 +81,42 @@ def create_user(
     db.refresh(new_user)
 
     return new_user
+
+
+# --------------------------------------------------
+# DELETE USER
+# DELETE /admin/users/{user_id}
+# --------------------------------------------------
+
+@router.delete(
+    "/users/{user_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def delete_user(
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    user = (
+        db.query(User)
+        .filter(User.id == user_id)
+        .first()
+    )
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    # Prevent the admin from deleting their own account.
+    if user.id == current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You cannot delete your own account.",
+        )
+
+    db.delete(user)
+    db.commit()
+
+    return None

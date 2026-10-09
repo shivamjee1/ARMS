@@ -18,6 +18,7 @@ from app.routers.teachers import router as teachers_router
 from app.routers.attendance import router as attendance_router
 from app.routers.results import router as results_router
 from app.routers.assessments import router as assessments_router
+from app.routers import hardware
 
 from app.routers.teacher_assignments import (
     router as teacher_assignments_router,
@@ -35,7 +36,9 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://arms-frontend-ovib.onrender.com"],
+    allow_origins=["https://arms-frontend-ovib.onrender.com",
+                    "http://localhost:5173"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -55,6 +58,7 @@ app.include_router(teacher_assignments_router)
 app.include_router(attendance_router)
 app.include_router(results_router)
 app.include_router(assessments_router)
+app.include_router(hardware.router)
 
 @app.get("/")
 def root():

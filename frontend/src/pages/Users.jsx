@@ -1,15 +1,34 @@
+
 import { useEffect, useState } from "react";
 import api from "../services/api";
 import "./Users.css";
+
+function getErrorMessage(error, fallback) {
+  const detail = error.response?.data?.detail;
+
+  if (typeof detail === "string") {
+    return detail;
+  }
+
+  if (Array.isArray(detail)) {
+    return detail
+      .map((item) => item.msg || JSON.stringify(item))
+      .join(", ");
+  }
+
+  return fallback;
+}
 
 function Users() {
   const [users, setUsers] = useState([]);
 
   const [loading, setLoading] = useState(true);
   const [formLoading, setFormLoading] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
 
   const [error, setError] = useState("");
   const [formError, setFormError] = useState("");
+  const [success, setSuccess] = useState("");
 
   const [showForm, setShowForm] = useState(false);
 
@@ -25,15 +44,13 @@ function Users() {
       setError("");
 
       const response = await api.get("/admin/users");
-      setUsers(response.data);
-    } catch (error) {
-      console.error("Failed to fetch users:", error);
+      setUsers(Array.isArray(response.data) ? response.data : []);
+    } catch (err) {
+      console.error("Failed to fetch users:", err);
 
-      if (error.response?.status === 403) {
-        setError("You are not authorized to view users.");
-      } else {
-        setError("Failed to load users.");
-      }
+      setError(
+        getErrorMessage(err, "Failed to load users.")
+      );
     } finally {
       setLoading(false);
     }
@@ -51,6 +68,8 @@ function Users() {
     });
 
     setFormError("");
+    setError("");
+    setSuccess("");
     setShowForm(true);
   };
 
@@ -74,11 +93,13 @@ function Users() {
     event.preventDefault();
 
     setFormError("");
+    setError("");
+    setSuccess("");
     setFormLoading(true);
 
     try {
       await api.post("/admin/users", {
-        email: formData.email,
+        email: formData.email.trim(),
         password: formData.password,
         role: formData.role,
       });
@@ -91,21 +112,45 @@ function Users() {
         role: "student",
       });
 
+      setSuccess("User created successfully.");
       await fetchUsers();
-    } catch (error) {
-      console.error("Failed to create user:", error);
+    } catch (err) {
+      console.error("Failed to create user:", err);
 
-      if (error.response?.data?.detail) {
-        setFormError(
-          typeof error.response.data.detail === "string"
-            ? error.response.data.detail
-            : JSON.stringify(error.response.data.detail)
-        );
-      } else {
-        setFormError("Failed to create user.");
-      }
+      setFormError(
+        getErrorMessage(err, "Failed to create user.")
+      );
     } finally {
       setFormLoading(false);
+    }
+  };
+
+  const handleDeleteUser = async (user) => {
+    const confirmed = window.confirm(
+      `Are you sure you want to delete the account for ${user.email}?\n\nThis action cannot be undone.`
+    );
+
+    if (!confirmed) return;
+
+    setDeletingId(user.id);
+    setError("");
+    setSuccess("");
+
+    try {
+      await api.delete(`/admin/users/${user.id}`);
+
+      setSuccess(`User ${user.email} was deleted successfully.`);
+
+      // Refresh the user list after deletion.
+      await fetchUsers();
+    } catch (err) {
+      console.error("Failed to delete user:", err);
+
+      setError(
+        getErrorMessage(err, "Failed to delete user.")
+      );
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -124,20 +169,35 @@ function Users() {
 
         <div className="users-header-actions">
           <button
+            type="button"
             className="users-refresh-button"
             onClick={fetchUsers}
-            disabled={loading}
+            disabled={loading || deletingId !== null}
           >
             {loading ? "Refreshing..." : "Refresh"}
           </button>
 
-          <button className="users-add-button" onClick={openForm}>
+          <button
+            type="button"
+            className="users-add-button"
+            onClick={openForm}
+          >
             + Create User
           </button>
         </div>
       </div>
 
-      {error && <div className="users-error">{error}</div>}
+      {error && (
+        <div className="users-error" role="alert">
+          {error}
+        </div>
+      )}
+
+      {success && (
+        <div className="users-success" role="status">
+          {success}
+        </div>
+      )}
 
       <div className="users-summary">
         <div>
@@ -184,6 +244,7 @@ function Users() {
                   <th>Email</th>
                   <th>Role</th>
                   <th>Status</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
 
@@ -217,6 +278,20 @@ function Users() {
                         {user.is_active ? "Active" : "Inactive"}
                       </span>
                     </td>
+
+                    <td>
+                      <button
+                        type="button"
+                        className="users-delete-button"
+                        onClick={() => handleDeleteUser(user)}
+                        disabled={deletingId !== null}
+                        title={`Delete ${user.email}`}
+                      >
+                        {deletingId === user.id
+                          ? "Deleting..."
+                          : "Delete"}
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -226,7 +301,10 @@ function Users() {
       </div>
 
       {showForm && (
-        <div className="users-modal-overlay" onClick={closeForm}>
+        <div
+          className="users-modal-overlay"
+          onClick={closeForm}
+        >
           <div
             className="users-modal-card"
             onClick={(event) => event.stopPropagation()}
@@ -237,15 +315,15 @@ function Users() {
 
                 <h2>Create User</h2>
 
-                <p>
-                  Create a new authentication account.
-                </p>
+                <p>Create a new authentication account.</p>
               </div>
 
               <button
+                type="button"
                 className="users-modal-close"
                 onClick={closeForm}
                 disabled={formLoading}
+                aria-label="Close create user form"
               >
                 ×
               </button>
@@ -300,7 +378,7 @@ function Users() {
               </div>
 
               {formError && (
-                <div className="users-form-error">
+                <div className="users-form-error" role="alert">
                   {formError}
                 </div>
               )}

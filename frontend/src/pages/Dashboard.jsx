@@ -1,33 +1,37 @@
+import { Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 import AdminDashboard from "./AdminDashboard";
-import TeacherDashboard from "./TeacherDashboard";
-import StudentDashboard from "./StudentDashboard";
+import TeacherDashboard from "./teacher/TeacherDashboard";
+import StudentDashboard from "./student/StudentDashboard";
 
 function Dashboard() {
   const { user, loading } = useAuth();
 
+  // Wait until authentication data is loaded
   if (loading) {
-    return <p>Loading...</p>;
+    return <p>Loading dashboard...</p>;
   }
 
+  // Redirect unauthenticated users to login
   if (!user) {
-    return <p>User information not available.</p>;
+    return <Navigate to="/login" replace />;
   }
 
-  if (user.role === "admin") {
-    return <AdminDashboard />;
-  }
+  // Display dashboard according to the user's role
+  switch (user.role?.toLowerCase()) {
+    case "admin":
+      return <AdminDashboard />;
 
-  if (user.role === "teacher") {
-    return <TeacherDashboard />;
-  }
+    case "teacher":
+      return <TeacherDashboard />;
 
-  if (user.role === "student") {
-    return <StudentDashboard />;
-  }
+    case "student":
+      return <StudentDashboard />;
 
-  return <p>Unknown user role.</p>;
+    default:
+      return <p>Unknown user role. Please contact the administrator.</p>;
+  }
 }
 
 export default Dashboard;

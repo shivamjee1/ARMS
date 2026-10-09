@@ -8,6 +8,7 @@ function Students() {
 
   const [loading, setLoading] = useState(true);
   const [formLoading, setFormLoading] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
 
   const [error, setError] = useState("");
   const [formError, setFormError] = useState("");
@@ -21,6 +22,7 @@ function Students() {
     name: "",
   });
 
+  // Fetch students
   const fetchStudents = async () => {
     try {
       setLoading(true);
@@ -36,6 +38,7 @@ function Students() {
     }
   };
 
+  // Fetch academic sections
   const fetchSections = async () => {
     try {
       const response = await api.get("/academic-sections");
@@ -51,6 +54,7 @@ function Students() {
     fetchSections();
   }, []);
 
+  // Open student creation form
   const openForm = () => {
     setFormError("");
 
@@ -64,6 +68,7 @@ function Students() {
     setShowForm(true);
   };
 
+  // Close student creation form
   const closeForm = () => {
     if (formLoading) return;
 
@@ -71,6 +76,7 @@ function Students() {
     setFormError("");
   };
 
+  // Handle input changes
   const handleChange = (e) => {
     const { name, value } = e.target;
 
@@ -80,6 +86,7 @@ function Students() {
     }));
   };
 
+  // Create student
   const handleCreateStudent = async (e) => {
     e.preventDefault();
 
@@ -121,9 +128,41 @@ function Students() {
     }
   };
 
+  // Delete student
+  const handleDeleteStudent = async (student) => {
+    const confirmed = window.confirm(
+      `Are you sure you want to delete student ${student.name} (${student.id})?`
+    );
+
+    if (!confirmed) return;
+
+    setDeletingId(student.id);
+    setError("");
+
+    try {
+      await api.delete(`/students/${student.id}`);
+
+      // Refresh the student table after deletion
+      await fetchStudents();
+    } catch (error) {
+      console.error("Failed to delete student:", error);
+
+      if (error.response?.data?.detail) {
+        setError(
+          typeof error.response.data.detail === "string"
+            ? error.response.data.detail
+            : JSON.stringify(error.response.data.detail)
+        );
+      } else {
+        setError("Failed to delete student.");
+      }
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   return (
     <div className="page-container">
-
       {/* Page Header */}
       <div className="page-header">
         <div>
@@ -140,7 +179,7 @@ function Students() {
           <button
             className="page-refresh-button"
             onClick={fetchStudents}
-            disabled={loading}
+            disabled={loading || deletingId !== null}
           >
             {loading ? "Refreshing..." : "Refresh"}
           </button>
@@ -171,7 +210,6 @@ function Students() {
 
       {/* Students Table */}
       <div className="table-card">
-
         <div className="table-card-header">
           <div>
             <h2>Student Records</h2>
@@ -193,20 +231,19 @@ function Students() {
         ) : (
           <div className="table-wrapper">
             <table className="data-table">
-
               <thead>
                 <tr>
                   <th>Student ID</th>
                   <th>Name</th>
                   <th>Email</th>
                   <th>Section</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
 
               <tbody>
                 {students.map((student) => (
                   <tr key={student.id}>
-
                     <td>
                       <span className="table-id">
                         {student.id}
@@ -219,9 +256,7 @@ function Students() {
                       </strong>
                     </td>
 
-                    <td>
-                      {student.user_email}
-                    </td>
+                    <td>{student.user_email}</td>
 
                     <td>
                       <span className="section-badge">
@@ -229,25 +264,36 @@ function Students() {
                       </span>
                     </td>
 
+                    <td>
+                      <button
+                        type="button"
+                        className="student-delete-button"
+                        onClick={() => handleDeleteStudent(student)}
+                        disabled={deletingId !== null}
+                      >
+                        {deletingId === student.id
+                          ? "Deleting..."
+                          : "Delete"}
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
-
             </table>
           </div>
         )}
-
       </div>
 
       {/* Add Student Modal */}
       {showForm && (
-        <div className="modal-overlay" onClick={closeForm}>
-
+        <div
+          className="modal-overlay"
+          onClick={closeForm}
+        >
           <div
             className="modal-card"
             onClick={(e) => e.stopPropagation()}
           >
-
             <div className="modal-header">
               <div>
                 <p className="modal-label">
@@ -274,7 +320,6 @@ function Students() {
               className="student-form"
               onSubmit={handleCreateStudent}
             >
-
               {/* Student ID */}
               <div className="form-group">
                 <label htmlFor="student-id">
@@ -336,7 +381,7 @@ function Students() {
                 />
               </div>
 
-              {/* Section */}
+              {/* Academic Section */}
               <div className="form-group">
                 <label htmlFor="student-section">
                   Academic Section
@@ -371,9 +416,8 @@ function Students() {
                 </div>
               )}
 
-              {/* Buttons */}
+              {/* Modal Buttons */}
               <div className="modal-actions">
-
                 <button
                   type="button"
                   className="modal-cancel-button"
@@ -392,16 +436,11 @@ function Students() {
                     ? "Creating..."
                     : "Create Student"}
                 </button>
-
               </div>
-
             </form>
-
           </div>
-
         </div>
       )}
-
     </div>
   );
 }
